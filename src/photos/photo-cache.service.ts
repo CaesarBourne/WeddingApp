@@ -70,7 +70,10 @@ export class PhotoCacheService {
         continue;
       }
       const cached = await this.cache.get<GoogleMediaItem>(baseUrlKey(id));
-      if (cached) result.set(id, cached);
+      // Only use cached value if it has a baseUrl; otherwise re-fetch so that
+      // items stored right after batchCreate (before Google finishes processing)
+      // get a proper URL on the next request.
+      if (cached?.baseUrl) result.set(id, cached);
       else misses.push(id);
     }
 
@@ -85,10 +88,13 @@ export class PhotoCacheService {
     return result;
   }
 
-  /** Pre-warm the fresh cache for items we just created (their baseUrls are valid). */
+  /** Pre-warm the fresh cache for items we just created, but only when Google
+   *  has already assigned a baseUrl.  batchCreate sometimes returns items that
+   *  are still processing and lack baseUrl; skipping them here lets the next
+   *  getFreshByIds call fall through to batchGet for a confirmed fresh URL. */
   async primeFresh(items: GoogleMediaItem[]): Promise<void> {
     for (const item of items) {
-      if (item?.id) {
+      if (item?.id && item.baseUrl) {
         await this.cache.set(baseUrlKey(item.id), item, this.baseUrlTtl * 1000);
       }
     }
