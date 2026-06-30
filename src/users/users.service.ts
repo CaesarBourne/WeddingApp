@@ -94,6 +94,10 @@ export class UsersService implements OnModuleInit {
     return bcrypt.compare(password, user.passwordHash);
   }
 
+  async setButtonEnabled(id: string, enabled: boolean): Promise<void> {
+    await this.repo.update(id, { buttonEnabled: enabled });
+  }
+
   async deleteGuest(id: string): Promise<void> {
     const user = await this.findById(id);
     if (user.role !== Role.GUEST) {

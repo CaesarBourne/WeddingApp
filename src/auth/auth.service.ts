@@ -13,6 +13,7 @@ export interface AuthResult {
     email: string | null;
     name?: string;
     role: string;
+    buttonEnabled: boolean;
   };
 }
 
@@ -57,7 +58,7 @@ export class AuthService {
 
     return {
       accessToken: this.jwtService.sign(payload),
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, buttonEnabled: user.buttonEnabled },
     };
   }
 }

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -11,7 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { UsersService } from './users.service';
 
 export class CreateGuestDto {
@@ -19,6 +20,11 @@ export class CreateGuestDto {
   @IsNotEmpty()
   @MaxLength(80)
   name: string;
+}
+
+export class SetButtonDto {
+  @IsBoolean()
+  enabled: boolean;
 }
 
 @ApiTags('users')
@@ -43,6 +49,13 @@ export class UsersController {
     return users.map((u) => this.toDto(u));
   }
 
+  @Patch('guests/:id/button')
+  @ApiOperation({ summary: 'Enable or disable the second action button on a guest welcome page (admin+).' })
+  async setButton(@Param('id') id: string, @Body() dto: SetButtonDto) {
+    await this.users.setButtonEnabled(id, dto.enabled);
+    return { id, buttonEnabled: dto.enabled };
+  }
+
   @Delete('guests/:id')
   @ApiOperation({ summary: 'Delete a guest account (admin+).' })
   async deleteGuest(@Param('id') id: string) {
@@ -58,6 +71,7 @@ export class UsersController {
       role: u.role,
       isActive: u.isActive,
       guestToken: u.guestToken,
+      buttonEnabled: u.buttonEnabled,
       createdAt: u.createdAt,
     };
   }

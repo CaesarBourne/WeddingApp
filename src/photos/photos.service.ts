@@ -14,6 +14,8 @@ import {
   MediaIndexEntry,
 } from '../google-photos/interfaces/media-item.interface';
 import { PhotoCacheService } from './photo-cache.service';
+import { PhotoMeta } from './entities/photo-meta.entity';
+import { PhotoMetaService } from './photo-meta.service';
 
 export interface PhotoDto {
   id: string;
@@ -23,16 +25,16 @@ export interface PhotoDto {
   creationTime?: string;
   width?: number;
   height?: number;
-  /** Fresh Google URL — expires ~60 min after it was fetched. */
   baseUrl?: string;
   thumbnailUrl?: string;
   displayUrl?: string;
   downloadUrl?: string;
-  /**
-   * STABLE url served by this API. It never expires; each hit 302-redirects to
-   * a freshly-resolved Google baseUrl. Use this in <img src> on the frontend.
-   */
+  /** STABLE url served by this API. Never expires; redirects to a fresh Google URL. */
   rawUrl: string;
+  /** Who uploaded this photo. Null for photos predating the uploader-tracking feature. */
+  uploaderId: string | null;
+  uploaderName: string | null;
+  uploadedAt: string | null;
 }
 
 const UPLOAD_CONCURRENCY = 5;
@@ -45,11 +47,11 @@ export class PhotosService {
   constructor(
     private readonly google: GooglePhotosService,
     private readonly cache: PhotoCacheService,
+    private readonly photoMeta: PhotoMetaService,
   ) {}
 
   // ──────────────────────────── Read ────────────────────────────
 
-  /** Paginated list of every photo in the wedding album. */
   async list(
     page: number,
     pageSize: number,
@@ -62,29 +64,31 @@ export class PhotosService {
     const start = (page - 1) * pageSize;
     const slice = index.slice(start, start + pageSize);
 
-    const fresh = await this.cache.getFreshByIds(
-      slice.map((i) => i.id),
-      refresh,
-    );
+    const ids = slice.map((i) => i.id);
+    const [fresh, metaMap] = await Promise.all([
+      this.cache.getFreshByIds(ids, refresh),
+      this.photoMeta.findByGoogleIds(ids),
+    ]);
 
     const data = slice.map((entry) =>
-      this.toDto(entry, fresh.get(entry.id)),
+      this.toDto(entry, fresh.get(entry.id), metaMap.get(entry.id)),
     );
 
     return { data, meta: buildPaginationMeta(page, pageSize, total) };
   }
 
-  /** A single photo with a fresh URL. */
   async getOne(id: string, refresh = false): Promise<PhotoDto> {
-    const fresh = await this.cache.getFreshByIds([id], refresh);
+    const [fresh, metaMap] = await Promise.all([
+      this.cache.getFreshByIds([id], refresh),
+      this.photoMeta.findByGoogleIds([id]),
+    ]);
     const item = fresh.get(id);
     if (!item) {
       throw new NotFoundException('Photo not found in the wedding album.');
     }
-    return this.toDto(this.indexFromItem(item), item);
+    return this.toDto(this.indexFromItem(item), item, metaMap.get(id));
   }
 
-  /** Resolves a fresh, sized Google URL for the raw-redirect endpoint. */
   async resolveRawUrl(id: string, size: string): Promise<string> {
     const fresh = await this.cache.getFreshByIds([id]);
     const item = fresh.get(id);
@@ -96,10 +100,10 @@ export class PhotosService {
 
   // ──────────────────────────── Write ────────────────────────────
 
-  /** Upload a single photo/video into the wedding album. */
   async uploadSingle(
     file: Express.Multer.File,
     description?: string,
+    uploader?: { id: string; name?: string | null } | null,
   ): Promise<PhotoDto> {
     this.assertValid(file);
     const albumId = await this.google.getAlbumId();
@@ -119,18 +123,19 @@ export class PhotosService {
       );
     }
 
-    await this.cache.bustIndex();
-    await this.cache.primeFresh([result.mediaItem]);
-    return this.toDto(this.indexFromItem(result.mediaItem), result.mediaItem);
+    await Promise.all([
+      this.cache.bustIndex(),
+      this.cache.primeFresh([result.mediaItem]),
+      this.photoMeta.saveMany([result.mediaItem.id], uploader ?? null),
+    ]);
+
+    return this.toDto(this.indexFromItem(result.mediaItem), result.mediaItem, undefined, uploader);
   }
 
-  /**
-   * Bulk upload. Bytes are uploaded with bounded concurrency; media items are
-   * then created in serial batches of 50 (Google's limit + guidance).
-   */
   async uploadBulk(
     files: Express.Multer.File[],
     description?: string,
+    uploader?: { id: string; name?: string | null } | null,
   ): Promise<{
     createdCount: number;
     failedCount: number;
@@ -145,7 +150,6 @@ export class PhotosService {
 
     const failed: Array<{ filename: string; reason: string }> = [];
 
-    // Step 1 — upload bytes (parallel, bounded).
     const tokens = await this.mapWithConcurrency(
       files,
       UPLOAD_CONCURRENCY,
@@ -173,7 +177,6 @@ export class PhotosService {
       description?: string;
     }>;
 
-    // Step 2 — create media items (chunked + serialized inside the service).
     const results = await this.google.batchCreate(albumId, valid);
 
     const created: PhotoDto[] = [];
@@ -181,7 +184,7 @@ export class PhotosService {
     for (const r of results) {
       if (r.mediaItem?.id) {
         createdItems.push(r.mediaItem);
-        created.push(this.toDto(this.indexFromItem(r.mediaItem), r.mediaItem));
+        created.push(this.toDto(this.indexFromItem(r.mediaItem), r.mediaItem, undefined, uploader));
       } else {
         failed.push({
           filename: '(unknown)',
@@ -190,8 +193,12 @@ export class PhotosService {
       }
     }
 
-    await this.cache.bustIndex();
-    await this.cache.primeFresh(createdItems);
+    const createdIds = createdItems.map((m) => m.id);
+    await Promise.all([
+      this.cache.bustIndex(),
+      this.cache.primeFresh(createdItems),
+      this.photoMeta.saveMany(createdIds, uploader ?? null),
+    ]);
 
     return {
       createdCount: created.length,
@@ -201,7 +208,6 @@ export class PhotosService {
     };
   }
 
-  /** Force a full re-sync of the album index and drop cached URLs. */
   async refresh(): Promise<{ total: number }> {
     const albumId = await this.google.getAlbumId();
     const index = await this.cache.getIndex(albumId, true);
@@ -219,9 +225,17 @@ export class PhotosService {
     }
   }
 
-  private toDto(entry: MediaIndexEntry, fresh?: GoogleMediaItem): PhotoDto {
+  private toDto(
+    entry: MediaIndexEntry,
+    fresh?: GoogleMediaItem,
+    meta?: PhotoMeta,
+    uploaderOverride?: { id: string; name?: string | null } | null,
+  ): PhotoDto {
     const baseUrl = fresh?.baseUrl;
     const isVideo = (entry.mimeType ?? '').startsWith('video/');
+    const videoSuffix = '=dv';
+    const displaySuffix = isVideo ? videoSuffix : '=w1600';
+    const downloadSuffix = isVideo ? videoSuffix : '=d';
     return {
       id: entry.id,
       filename: entry.filename,
@@ -232,11 +246,12 @@ export class PhotosService {
       height: entry.height ? Number(entry.height) : undefined,
       baseUrl,
       thumbnailUrl: baseUrl ? baseUrl + '=w400-h400' : undefined,
-      displayUrl: baseUrl
-        ? baseUrl + (isVideo ? '=dv' : '=w1600')
-        : undefined,
-      downloadUrl: baseUrl ? baseUrl + (isVideo ? '=dv' : '=d') : undefined,
+      displayUrl: baseUrl ? baseUrl + displaySuffix : undefined,
+      downloadUrl: baseUrl ? baseUrl + downloadSuffix : undefined,
       rawUrl: `/photos/${entry.id}/raw?size=display`,
+      uploaderId: uploaderOverride?.id ?? meta?.uploaderId ?? null,
+      uploaderName: uploaderOverride?.name ?? meta?.uploaderName ?? null,
+      uploadedAt: meta?.uploadedAt?.toISOString() ?? null,
     };
   }
 
@@ -252,7 +267,6 @@ export class PhotosService {
     };
   }
 
-  /** Maps a size keyword (or raw `wNNN-hNNN`) to a Google baseUrl parameter. */
   private sizeParam(size: string, mimeType?: string): string {
     const isVideo = (mimeType ?? '').startsWith('video/');
     switch (size) {

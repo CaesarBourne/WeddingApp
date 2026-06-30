@@ -37,6 +37,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   currentJti: string | null;
 
+  /** Admin-controlled flag that enables the second action button on the guest welcome page. */
+  @Column({ default: false })
+  buttonEnabled: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
