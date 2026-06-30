@@ -41,6 +41,18 @@ export class User {
   @Column({ default: false })
   buttonEnabled: boolean;
 
+  /** Path on disk to the user's profile avatar image (relative to process.cwd()). */
+  @Column({ type: 'varchar', nullable: true })
+  avatarPath: string | null;
+
+  /** Tracks whether the guest has been admitted at the event entrance. */
+  @Column({ type: 'varchar', default: 'pending' })
+  admissionStatus: 'pending' | 'admitted';
+
+  /** Timestamp of when the guest was first admitted at the entrance. */
+  @Column({ nullable: true, type: 'datetime' })
+  admittedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

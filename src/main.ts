@@ -14,6 +14,9 @@ async function bootstrap() {
     fs.mkdirSync(path.dirname(dbFile), { recursive: true });
   }
 
+  // Ensure the avatars directory exists.
+  fs.mkdirSync(path.join(path.dirname(dbFile), 'avatars'), { recursive: true });
+
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   const config = app.get(ConfigService);
 
