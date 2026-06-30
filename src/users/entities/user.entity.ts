@@ -12,14 +12,15 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  email: string;
+  /** Null for guest users who authenticate via QR token instead. */
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  email: string | null;
 
-  /** bcrypt hash — never returned by the API. */
-  @Column()
-  passwordHash: string;
+  /** bcrypt hash — never returned by the API. Null for guest users. */
+  @Column({ type: 'varchar', nullable: true, select: false })
+  passwordHash: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   name?: string;
 
   @Column({ type: 'varchar', default: Role.ADMIN })
@@ -27,6 +28,18 @@ export class User {
 
   @Column({ default: true })
   isActive: boolean;
+
+  /** Unique random token embedded in the guest's QR code URL. */
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  guestToken: string | null;
+
+  /** JWT ID of the guest's currently active session (one-device enforcement). */
+  @Column({ type: 'varchar', nullable: true })
+  currentJti: string | null;
+
+  /** Admin-controlled flag that enables the second action button on the guest welcome page. */
+  @Column({ default: false })
+  buttonEnabled: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -203,3 +203,78 @@ curl -X POST localhost:3000/photos/upload/bulk -H "Authorization: Bearer $TOKEN"
   endpoint reports per-file `failed[]` accordingly.
 - `mediaItems:search` max page size is 100; this API caps `pageSize` at 100.
 - Albums hold up to 20,000 items.
+
+---
+
+## Guest user system
+
+### Overview
+
+Admins can create **guest accounts** — name-only users who receive a unique QR
+code. Scanning the QR auto-authenticates the guest (no password, no form) and
+gives them full upload access. A **one-device policy** is enforced: re-scanning
+the QR on any device invalidates every previous session for that guest.
+
+### New roles
+
+| Role | Description |
+|---|---|
+| `admin` | Can create/delete guests and list users. |
+| `super_admin` | Admin + can create other admins. |
+| `guest` | Upload-only; authenticated via QR token, no email/password. |
+
+### User entity changes
+
+`email` and `passwordHash` are now nullable (guests have neither). Two new
+columns were added:
+
+| Column | Type | Purpose |
+|---|---|---|
+| `guestToken` | `varchar` (unique, nullable) | 64-char hex secret embedded in the QR URL. |
+| `currentJti` | `varchar` (nullable) | UUID of the guest's **current** active JWT. Updated on every QR scan. |
+
+> If you have an existing `wedding.sqlite` from before this change, delete it
+> and let `synchronize: true` recreate the schema on next boot.
+
+### New endpoints
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/guest` | public | Exchange a `guestToken` for a JWT. Rotates `currentJti` (invalidates previous session). |
+| POST | `/users/guests` | admin | Create a guest — body: `{ "name": "Uncle James" }`. Returns the new user incl. `guestToken`. |
+| GET  | `/users` | admin | List all users (admins + guests). |
+| DELETE | `/users/guests/:id` | admin | Delete a guest account and invalidate their QR. |
+
+### One-device enforcement
+
+Every `POST /auth/guest` call:
+1. Looks up the user by `guestToken`.
+2. Generates a new `jti` (UUID) and writes it to `currentJti` in the DB.
+3. Issues a JWT with `jti` in the payload.
+
+The JWT strategy checks `payload.jti === user.currentJti` for every guest
+request. A re-scan on a second device writes a new `currentJti`, immediately
+rejecting all tokens that carry the old `jti`.
+
+Admin and super-admin JWTs are **exempt** from the `jti` check.
+
+### Guest login flow
+
+```
+QR scan → GET /guest?t=<guestToken>   (frontend)
+        → POST /auth/guest { token }  (backend)
+        → { accessToken, user }
+        → redirect to gallery
+```
+
+### Bug fix — images not loading until restart
+
+`POST /photos/upload/bulk` calls Google's `batchCreate`, which returns media
+items **without a `baseUrl`** while Google's pipeline processes the upload. The
+cache previously stored these incomplete items, causing `/photos/:id/raw` to
+return 404 until the cache expired and the backend was restarted.
+
+**Fix (in `PhotoCacheService`):**
+- `primeFresh` now skips any item that has no `baseUrl`.
+- `getFreshByIds` treats a cached item with no `baseUrl` as a cache miss,
+  forcing a fresh `batchGet` until Google finishes processing.
