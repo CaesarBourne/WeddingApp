@@ -18,9 +18,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import { memoryStorage } from 'multer';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { IsBoolean, IsNotEmpty, IsString, MaxLength } from 'class-validator';
@@ -93,7 +93,7 @@ export class UsersController {
   /** Guest or admin uploads their own avatar. */
   @Post('me/avatar')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.GUEST)
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
   @ApiOperation({ summary: 'Upload own avatar (any authenticated user).' })
   async uploadMyAvatar(
     @CurrentUser() requester: AuthUser,
@@ -104,7 +104,7 @@ export class UsersController {
 
   /** Admin sets the avatar for any user. */
   @Patch(':id/avatar')
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
   @ApiOperation({ summary: 'Admin sets a user avatar.' })
   async uploadUserAvatar(
     @Param('id') id: string,
@@ -113,18 +113,14 @@ export class UsersController {
     return this.saveAvatar(id, file);
   }
 
-  /** Serve a user's avatar image. Guests may only retrieve their own. */
+  /** Serve a user's avatar image. Public so <img> tags can load it without extra headers. */
+  @Public()
   @Get(':id/avatar')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.GUEST)
-  @ApiOperation({ summary: "Serve a user's avatar image." })
+  @ApiOperation({ summary: "Serve a user's avatar image (public)." })
   async getAvatar(
     @Param('id') id: string,
-    @CurrentUser() requester: AuthUser,
     @Res() res: Response,
   ) {
-    const isAdmin = [Role.ADMIN as string, Role.SUPER_ADMIN as string].includes(requester.role);
-    if (!isAdmin && requester.sub !== id) throw new ForbiddenException();
-
     const user = await this.users.findById(id);
     if (!user.avatarPath || !fs.existsSync(user.avatarPath)) {
       throw new NotFoundException('No avatar set for this user.');
