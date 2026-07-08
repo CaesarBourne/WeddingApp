@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -65,6 +66,26 @@ export class AuthController {
   async createAdmin(@Body() dto: CreateAdminDto) {
     const user = await this.usersService.create(dto);
     return { id: user.id, email: user.email, name: user.name, role: user.role };
+  }
+
+  /** Admin looks up a guest by their QR token without logging in as them.
+   *  Used by the entrance-validation scan flow. */
+  @Post('guest-info')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Return guest profile from a QR token (admin+, does not create a session).' })
+  async guestInfo(@Body() dto: GuestTokenDto) {
+    const user = await this.usersService.findByGuestToken(dto.token);
+    if (!user) throw new NotFoundException('Guest not found or token invalid.');
+    return {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      admissionStatus: user.admissionStatus,
+      admittedAt: user.admittedAt,
+      avatarUrl: user.avatarPath ? `/users/${user.id}/avatar` : null,
+    };
   }
 
   @Get('admins')

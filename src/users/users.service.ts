@@ -98,10 +98,30 @@ export class UsersService implements OnModuleInit {
     await this.repo.update(id, { buttonEnabled: enabled });
   }
 
+  async setAvatar(id: string, avatarPath: string): Promise<void> {
+    await this.repo.update(id, { avatarPath });
+  }
+
+  async admitUser(id: string): Promise<User> {
+    const user = await this.findById(id);
+    if (user.admissionStatus === 'admitted') return user;
+    user.admissionStatus = 'admitted';
+    user.admittedAt = new Date();
+    return this.repo.save(user);
+  }
+
   async deleteGuest(id: string): Promise<void> {
     const user = await this.findById(id);
     if (user.role !== Role.GUEST) {
       throw new ConflictException('Only guest accounts can be deleted this way.');
+    }
+    await this.repo.remove(user);
+  }
+
+  async deleteAdmin(id: string): Promise<void> {
+    const user = await this.findById(id);
+    if (user.role !== Role.ADMIN) {
+      throw new ConflictException('Only regular admin accounts can be removed this way.');
     }
     await this.repo.remove(user);
   }
