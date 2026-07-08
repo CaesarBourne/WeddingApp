@@ -117,4 +117,12 @@ export class UsersService implements OnModuleInit {
     }
     await this.repo.remove(user);
   }
+
+  async deleteAdmin(id: string): Promise<void> {
+    const user = await this.findById(id);
+    if (user.role !== Role.ADMIN) {
+      throw new ConflictException('Only regular admin accounts can be removed this way.');
+    }
+    await this.repo.remove(user);
+  }
 }

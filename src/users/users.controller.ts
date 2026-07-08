@@ -23,7 +23,7 @@ import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
-import { IsBoolean, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 import { UsersService } from './users.service';
 
 export class CreateGuestDto {
@@ -36,6 +36,22 @@ export class CreateGuestDto {
 export class SetButtonDto {
   @IsBoolean()
   enabled: boolean;
+}
+
+export class CreateAdminDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  name: string;
+
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  password: string;
 }
 
 const AVATARS_DIR = path.resolve(process.cwd(), 'data', 'avatars');
@@ -54,6 +70,27 @@ const EXT_MAP: Record<string, string> = {
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
+
+  @Post('admins')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create an admin account (super_admin only).' })
+  async createAdmin(@Body() dto: CreateAdminDto) {
+    const user = await this.users.create({
+      email: dto.email,
+      password: dto.password,
+      name: dto.name,
+      role: Role.ADMIN,
+    });
+    return this.toDto(user);
+  }
+
+  @Delete('admins/:id')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete an admin account (super_admin only).' })
+  async deleteAdmin(@Param('id') id: string) {
+    await this.users.deleteAdmin(id);
+    return { deleted: true };
+  }
 
   @Post('guests')
   @ApiOperation({ summary: 'Create a guest user with a QR token (admin+).' })
