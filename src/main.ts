@@ -36,6 +36,8 @@ async function bootstrap() {
     credentials: true,
   });
 
+  const logger = new Logger('Bootstrap');
+
   // Swagger / OpenAPI docs at /docs
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Wedding Photos API')
@@ -47,14 +49,17 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const doc = SwaggerModule.createDocument(app, swaggerConfig);
+  const swaggerOutputPath = path.join(process.cwd(), 'docs', 'swagger-spec.json');
+  fs.mkdirSync(path.dirname(swaggerOutputPath), { recursive: true });
+  fs.writeFileSync(swaggerOutputPath, JSON.stringify(doc, null, 2));
   SwaggerModule.setup('docs', app, doc);
 
   const port = config.get<number>('port')!;
   await app.listen(port);
 
-  const logger = new Logger('Bootstrap');
   logger.log(`🚀  API ready on http://localhost:${port}`);
   logger.log(`📚  Swagger docs on http://localhost:${port}/docs`);
+  logger.log(`🧾  Swagger spec exported to ${swaggerOutputPath}`);
 }
 
 bootstrap();

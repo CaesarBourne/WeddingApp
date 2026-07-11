@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -30,7 +31,12 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthUser } from '../common/decorators/current-user.decorator';
-import { ListPhotosDto, UploadPhotoDto } from './dto/list-photos.dto';
+import {
+  ListPhotosDto,
+  ModeratePhotoDto,
+  ModerationQueryDto,
+  UploadPhotoDto,
+} from './dto/list-photos.dto';
 import { PhotosService } from './photos.service';
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024;
@@ -42,10 +48,21 @@ const MAX_BULK_FILES = 200;
 export class PhotosController {
   constructor(private readonly photos: PhotosService) {}
 
+  @Public()
   @Get()
-  @ApiOperation({ summary: 'List all wedding photos (paginated).' })
+  @ApiOperation({ summary: 'List approved wedding photos (paginated, public).' })
   list(@Query() query: ListPhotosDto) {
     return this.photos.list(query.page, query.pageSize, query.refresh);
+  }
+
+  // Must be declared BEFORE `@Get(':id')` so "/photos/moderation" isn't captured as an id.
+  @Get('moderation')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List uploads by moderation state (admin queue).' })
+  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'approved', 'rejected'] })
+  listModeration(@Query() query: ModerationQueryDto) {
+    return this.photos.listModeration(query.status);
   }
 
   @Get(':id')
@@ -94,10 +111,12 @@ export class PhotosController {
     @Body() body: UploadPhotoDto,
     @Request() req: { user: AuthUser },
   ) {
-    return this.photos.uploadSingle(file, body.description, {
-      id: req.user.sub,
-      name: req.user.name,
-    });
+    return this.photos.uploadSingle(
+      file,
+      body.description,
+      { id: req.user.sub, name: req.user.name, role: req.user.role },
+      body.isAnonymous ?? false,
+    );
   }
 
   @Post('upload/bulk')
@@ -126,10 +145,20 @@ export class PhotosController {
     @Body() body: UploadPhotoDto,
     @Request() req: { user: AuthUser },
   ) {
-    return this.photos.uploadBulk(files, body.description, {
-      id: req.user.sub,
-      name: req.user.name,
-    });
+    return this.photos.uploadBulk(
+      files,
+      body.description,
+      { id: req.user.sub, name: req.user.name, role: req.user.role },
+      body.isAnonymous ?? false,
+    );
+  }
+
+  @Patch(':id/status')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve or reject an upload (admin moderation).' })
+  setStatus(@Param('id') id: string, @Body() body: ModeratePhotoDto) {
+    return this.photos.setStatus(id, body.status);
   }
 
   @Post('refresh')
