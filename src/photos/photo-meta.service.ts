@@ -1,7 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { PhotoMeta } from './entities/photo-meta.entity';
+import { PhotoMeta, PhotoSource, PhotoStatus } from './entities/photo-meta.entity';
+
+export interface PhotoMetaOptions {
+  status?: PhotoStatus;
+  source?: PhotoSource;
+  isAnonymous?: boolean;
+}
+
+/** One media item to record, with the metadata the public gallery renders. */
+export interface PhotoMetaInput {
+  googlePhotoId: string;
+  filename?: string | null;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  creationTime?: string | null;
+}
 
 @Injectable()
 export class PhotoMetaService {
@@ -11,15 +27,24 @@ export class PhotoMetaService {
   ) {}
 
   async saveMany(
-    googlePhotoIds: string[],
+    items: PhotoMetaInput[],
     uploader: { id: string; name?: string | null } | null,
+    opts: PhotoMetaOptions = {},
   ): Promise<void> {
-    if (!googlePhotoIds.length) return;
-    const entities = googlePhotoIds.map((googlePhotoId) =>
+    if (!items.length) return;
+    const entities = items.map((it) =>
       this.repo.create({
-        googlePhotoId,
+        googlePhotoId: it.googlePhotoId,
+        filename: it.filename ?? null,
+        mimeType: it.mimeType ?? null,
+        width: it.width ?? null,
+        height: it.height ?? null,
+        creationTime: it.creationTime ?? null,
         uploaderId: uploader?.id ?? null,
         uploaderName: uploader?.name ?? null,
+        status: opts.status ?? 'approved',
+        source: opts.source ?? 'guest',
+        isAnonymous: opts.isAnonymous ?? false,
       }),
     );
     await this.repo
@@ -35,5 +60,32 @@ export class PhotoMetaService {
     if (!ids.length) return new Map();
     const metas = await this.repo.find({ where: { googlePhotoId: In(ids) } });
     return new Map(metas.map((m) => [m.googlePhotoId, m]));
+  }
+
+  /** Moderation queue: all rows in a given state, newest first. */
+  async findByStatus(status: PhotoStatus): Promise<PhotoMeta[]> {
+    return this.repo.find({
+      where: { status },
+      order: { uploadedAt: 'DESC' },
+    });
+  }
+
+  /** Paginated rows in a given state, newest first, plus the total count. */
+  async findByStatusPaged(
+    status: PhotoStatus,
+    skip: number,
+    take: number,
+  ): Promise<{ rows: PhotoMeta[]; total: number }> {
+    const [rows, total] = await this.repo.findAndCount({
+      where: { status },
+      order: { uploadedAt: 'DESC' },
+      skip,
+      take,
+    });
+    return { rows, total };
+  }
+
+  async updateStatus(googlePhotoId: string, status: PhotoStatus): Promise<void> {
+    await this.repo.update({ googlePhotoId }, { status });
   }
 }
