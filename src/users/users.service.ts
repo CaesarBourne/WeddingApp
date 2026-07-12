@@ -102,6 +102,10 @@ export class UsersService implements OnModuleInit {
     await this.repo.update(id, { avatarPath });
   }
 
+  async setSeatNumber(id: string, seatNumber: string | null): Promise<void> {
+    await this.repo.update(id, { seatNumber });
+  }
+
   async admitUser(id: string): Promise<User> {
     const user = await this.findById(id);
     if (user.admissionStatus === 'admitted') return user;

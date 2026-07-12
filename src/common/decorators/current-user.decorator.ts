@@ -6,6 +6,7 @@ export interface AuthUser {
   role: string;
   name?: string;
   buttonEnabled: boolean;
+  seatNumber?: string | null;
   jti?: string;
 }
 

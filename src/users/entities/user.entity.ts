@@ -45,6 +45,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   avatarPath: string | null;
 
+  /** Seat number at the event venue — set by admin, used for food ordering. */
+  @Column({ type: 'varchar', nullable: true })
+  seatNumber: string | null;
+
   /** Tracks whether the guest has been admitted at the event entrance. */
   @Column({ type: 'varchar', default: 'pending' })
   admissionStatus: 'pending' | 'admitted';
