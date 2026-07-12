@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
+import { FoodModule } from './food/food.module';
 import { GooglePhotosModule } from './google-photos/google-photos.module';
 import { PhotosModule } from './photos/photos.module';
 import { User } from './users/entities/user.entity';
@@ -68,6 +69,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     GooglePhotosModule,
     PhotosModule,
+    FoodModule,
   ],
   providers: [
     // Every route requires a JWT unless @Public(); then rate-limit everything.

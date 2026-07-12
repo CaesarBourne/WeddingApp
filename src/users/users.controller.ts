@@ -23,7 +23,7 @@ import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorat
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
-import { IsBoolean, IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { UsersService } from './users.service';
 
 export class CreateGuestDto {
@@ -36,6 +36,13 @@ export class CreateGuestDto {
 export class SetButtonDto {
   @IsBoolean()
   enabled: boolean;
+}
+
+export class SetSeatDto {
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  seatNumber: string | null;
 }
 
 export class CreateAdminDto {
@@ -120,6 +127,13 @@ export class UsersController {
     return { id, buttonEnabled: dto.enabled };
   }
 
+  @Patch('guests/:id/seat')
+  @ApiOperation({ summary: 'Set (or clear) a guest seat number (admin+).' })
+  async setSeat(@Param('id') id: string, @Body() dto: SetSeatDto) {
+    await this.users.setSeatNumber(id, dto.seatNumber ?? null);
+    return { id, seatNumber: dto.seatNumber ?? null };
+  }
+
   @Delete('guests/:id')
   @ApiOperation({ summary: 'Delete a guest account (admin+).' })
   async deleteGuest(@Param('id') id: string) {
@@ -193,6 +207,7 @@ export class UsersController {
       isActive: u.isActive,
       guestToken: u.guestToken,
       buttonEnabled: u.buttonEnabled,
+      seatNumber: u.seatNumber ?? null,
       admissionStatus: u.admissionStatus,
       admittedAt: u.admittedAt,
       avatarUrl: u.avatarPath ? `/users/${u.id}/avatar` : null,

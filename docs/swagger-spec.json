@@ -178,6 +178,45 @@
         ]
       }
     },
+    "/users/guests/{id}/seat": {
+      "patch": {
+        "operationId": "UsersController_setSeat",
+        "summary": "Set (or clear) a guest seat number (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSeatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/users/guests/{id}": {
       "delete": {
         "operationId": "UsersController_deleteGuest",
@@ -732,6 +771,264 @@
           }
         ]
       }
+    },
+    "/food/items": {
+      "get": {
+        "operationId": "FoodController_findAllItems",
+        "summary": "Get all food/drink items (public).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "FoodController_createItem",
+        "summary": "Create a food or drink item (admin+).",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFoodItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/food/items/{id}/image": {
+      "get": {
+        "operationId": "FoodController_getImage",
+        "summary": "Serve a food item image (public).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "FoodController_uploadImage",
+        "summary": "Upload an image for a food item (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/food/items/{id}": {
+      "patch": {
+        "operationId": "FoodController_updateItem",
+        "summary": "Update a food or drink item (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFoodItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "FoodController_deleteItem",
+        "summary": "Delete a food or drink item (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/food/orders": {
+      "post": {
+        "operationId": "FoodController_placeOrder",
+        "summary": "Place a food/drink order (any authenticated user).",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "FoodController_allOrders",
+        "summary": "Get all orders (admin+).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/food/orders/mine": {
+      "get": {
+        "operationId": "FoodController_myOrders",
+        "summary": "Get the current user's orders.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/food/events": {
+      "get": {
+        "operationId": "FoodController_events",
+        "summary": "SSE stream of new order notifications (admin+).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "food"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
     }
   },
   "info": {
@@ -789,6 +1086,10 @@
         "type": "object",
         "properties": {}
       },
+      "SetSeatDto": {
+        "type": "object",
+        "properties": {}
+      },
       "LoginDto": {
         "type": "object",
         "properties": {
@@ -824,6 +1125,18 @@
         "required": [
           "status"
         ]
+      },
+      "CreateFoodItemDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateFoodItemDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PlaceOrderDto": {
+        "type": "object",
+        "properties": {}
       }
     }
   }
