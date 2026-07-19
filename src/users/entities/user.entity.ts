@@ -49,6 +49,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   seatNumber: string | null;
 
+  /** Sequential guest number, assigned once at creation. Guest-role users only. */
+  @Column({ type: 'int', nullable: true, unique: true })
+  guestNumber: number | null;
+
   /** Tracks whether the guest has been admitted at the event entrance. */
   @Column({ type: 'varchar', default: 'pending' })
   admissionStatus: 'pending' | 'admitted';

@@ -208,6 +208,7 @@ export class UsersController {
       guestToken: u.guestToken,
       buttonEnabled: u.buttonEnabled,
       seatNumber: u.seatNumber ?? null,
+      guestNumber: u.guestNumber ?? null,
       admissionStatus: u.admissionStatus,
       admittedAt: u.admittedAt,
       avatarUrl: u.avatarPath ? `/users/${u.id}/avatar` : null,

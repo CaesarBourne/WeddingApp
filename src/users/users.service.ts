@@ -58,8 +58,25 @@ export class UsersService implements OnModuleInit {
 
   async createGuest(name: string): Promise<User> {
     const guestToken = randomBytes(32).toString('hex');
-    const user = this.repo.create({ name, guestToken, role: Role.GUEST, isActive: true });
+    const guestNumber = await this.nextGuestNumber();
+    const user = this.repo.create({
+      name,
+      guestToken,
+      role: Role.GUEST,
+      isActive: true,
+      guestNumber,
+    });
     return this.repo.save(user);
+  }
+
+  /** Next sequential guest number: max assigned so far + 1. Stable across deletions. */
+  private async nextGuestNumber(): Promise<number> {
+    const result = await this.repo
+      .createQueryBuilder('u')
+      .select('MAX(u.guestNumber)', 'max')
+      .where('u.role = :role', { role: Role.GUEST })
+      .getRawOne<{ max: number | string | null }>();
+    return Number(result?.max ?? 0) + 1;
   }
 
   async findByEmail(email: string): Promise<User | null> {
