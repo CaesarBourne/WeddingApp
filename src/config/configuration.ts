@@ -23,6 +23,8 @@ export default () => ({
     port: parseInt(process.env.DB_PORT ?? '5432', 10),
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
+    // Hosted Postgres (Supabase, Render, etc.) requires TLS; local dev usually doesn't have it.
+    ssl: process.env.DB_SSL !== 'false',
   },
 
   google: {

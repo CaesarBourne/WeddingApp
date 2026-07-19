@@ -54,7 +54,7 @@ export class User {
   admissionStatus: 'pending' | 'admitted';
 
   /** Timestamp of when the guest was first admitted at the entrance. */
-  @Column({ nullable: true, type: 'datetime' })
+  @Column({ nullable: true, type: 'timestamp' })
   admittedAt: Date | null;
 
   @CreateDateColumn()

@@ -43,7 +43,6 @@ import { UsersModule } from './users/users.module';
         const type = config.get<'sqlite' | 'postgres'>('db.type');
         const common = {
           entities: [User],
-          synchronize: true, // fine for this app; use migrations for prod-grade
           autoLoadEntities: true,
         };
         if (type === 'postgres') {
@@ -54,12 +53,20 @@ import { UsersModule } from './users/users.module';
             username: config.get<string>('db.username'),
             password: config.get<string>('db.password'),
             database: config.get<string>('db.database'),
+            ssl: config.get<boolean>('db.ssl')
+              ? { rejectUnauthorized: false }
+              : false,
+            // Postgres holds real production data — no auto-DDL. Add columns/tables
+            // manually (Supabase SQL editor) or temporarily flip this on to sync a
+            // new entity, then flip back off.
+            synchronize: false,
             ...common,
           };
         }
         return {
           type: 'better-sqlite3' as const,
           database: config.get<string>('db.database'),
+          synchronize: true, // local/dev only — file is ephemeral, safe to auto-sync
           ...common,
         };
       },
