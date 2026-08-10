@@ -24,6 +24,8 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { GooglePhotosService } from '../google-photos/google-photos.service';
+import { PhotosService } from '../photos/photos.service';
 import { UsersService } from './users.service';
 
 export class CreateGuestDto {
@@ -61,14 +63,7 @@ export class CreateAdminDto {
   password: string;
 }
 
-const AVATARS_DIR = path.resolve(process.cwd(), 'data', 'avatars');
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const EXT_MAP: Record<string, string> = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/webp': '.webp',
-  'image/gif': '.gif',
-};
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -76,7 +71,11 @@ const EXT_MAP: Record<string, string> = {
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly google: GooglePhotosService,
+    private readonly photos: PhotosService,
+  ) {}
 
   @Post('admins')
   @Roles(Role.SUPER_ADMIN)
@@ -173,21 +172,30 @@ export class UsersController {
     @Res() res: Response,
   ) {
     const user = await this.users.findById(id);
-    if (!user.avatarPath || !fs.existsSync(user.avatarPath)) {
-      throw new NotFoundException('No avatar set for this user.');
+
+    // Current: stored durably in Google Photos (never listed publicly — no PhotoMeta row).
+    if (user.avatarPhotoId) {
+      const url = await this.photos.resolveRawUrl(user.avatarPhotoId, 'thumb');
+      res.set('Cache-Control', 'private, max-age=300');
+      return res.redirect(302, url);
     }
 
-    const ext = path.extname(user.avatarPath).toLowerCase();
-    const mimeMap: Record<string, string> = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.webp': 'image/webp',
-      '.gif': 'image/gif',
-    };
-    res.set('Content-Type', mimeMap[ext] ?? 'application/octet-stream');
-    res.set('Cache-Control', 'private, max-age=300');
-    res.send(fs.readFileSync(user.avatarPath));
+    // Legacy: old avatars written to local disk before the Google Photos migration.
+    if (user.avatarPath && fs.existsSync(user.avatarPath)) {
+      const ext = path.extname(user.avatarPath).toLowerCase();
+      const mimeMap: Record<string, string> = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif',
+      };
+      res.set('Content-Type', mimeMap[ext] ?? 'application/octet-stream');
+      res.set('Cache-Control', 'private, max-age=300');
+      return res.send(fs.readFileSync(user.avatarPath));
+    }
+
+    throw new NotFoundException('No avatar set for this user.');
   }
 
   /** Admit a guest at the event entrance (admin+). */
@@ -211,21 +219,31 @@ export class UsersController {
       guestNumber: u.guestNumber ?? null,
       admissionStatus: u.admissionStatus,
       admittedAt: u.admittedAt,
-      avatarUrl: u.avatarPath ? `/users/${u.id}/avatar` : null,
+      avatarUrl: u.avatarPhotoId || u.avatarPath ? `/users/${u.id}/avatar` : null,
       createdAt: u.createdAt,
     };
   }
 
+  /** Uploaded to the couple's Google Photos album (durable) but never given a
+   *  PhotoMeta row, so it's never listed in the public gallery — private, on-record only. */
   private async saveAvatar(userId: string, file: Express.Multer.File) {
     if (!file) throw new NotFoundException('No file uploaded.');
     if (!ALLOWED_MIME.has(file.mimetype)) {
       throw new ForbiddenException('Only JPEG, PNG, WebP, and GIF avatars are allowed.');
     }
-    fs.mkdirSync(AVATARS_DIR, { recursive: true });
-    const ext = EXT_MAP[file.mimetype] ?? '.jpg';
-    const filePath = path.join(AVATARS_DIR, `${userId}${ext}`);
-    fs.writeFileSync(filePath, file.buffer);
-    await this.users.setAvatar(userId, filePath);
+    const albumId = await this.google.getAlbumId();
+    const uploadToken = await this.google.uploadBytes(
+      file.buffer,
+      file.mimetype,
+      file.originalname || `avatar-${userId}`,
+    );
+    const [result] = await this.google.batchCreate(albumId, [
+      { uploadToken, filename: file.originalname || `avatar-${userId}` },
+    ]);
+    if (!result?.mediaItem?.id) {
+      throw new ForbiddenException(result?.status?.message || 'Google Photos rejected the upload.');
+    }
+    await this.users.setAvatarPhotoId(userId, result.mediaItem.id);
     return { avatarUrl: `/users/${userId}/avatar` };
   }
 }

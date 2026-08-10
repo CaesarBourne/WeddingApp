@@ -119,6 +119,10 @@ export class UsersService implements OnModuleInit {
     await this.repo.update(id, { avatarPath });
   }
 
+  async setAvatarPhotoId(id: string, avatarPhotoId: string): Promise<void> {
+    await this.repo.update(id, { avatarPhotoId });
+  }
+
   async setSeatNumber(id: string, seatNumber: string | null): Promise<void> {
     await this.repo.update(id, { seatNumber });
   }

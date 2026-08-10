@@ -11,5 +11,6 @@ import { PhotosService } from './photos.service';
   imports: [GooglePhotosModule, TypeOrmModule.forFeature([PhotoMeta])],
   controllers: [PhotosController],
   providers: [PhotosService, PhotoCacheService, PhotoMetaService],
+  exports: [PhotosService],
 })
 export class PhotosModule {}
