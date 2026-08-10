@@ -4,6 +4,7 @@ import { Observable, Subject } from 'rxjs';
 import { Repository } from 'typeorm';
 import { FoodItem } from './entities/food-item.entity';
 import { FoodOrder } from './entities/food-order.entity';
+import { FoodSettings } from './entities/food-settings.entity';
 
 export interface OrderNotification {
   orderId: string;
@@ -14,6 +15,8 @@ export interface OrderNotification {
   orderedAt: string;
 }
 
+const SETTINGS_ID = 'singleton';
+
 @Injectable()
 export class FoodService {
   private readonly orderSubject = new Subject<OrderNotification>();
@@ -21,10 +24,32 @@ export class FoodService {
   constructor(
     @InjectRepository(FoodItem) private readonly itemRepo: Repository<FoodItem>,
     @InjectRepository(FoodOrder) private readonly orderRepo: Repository<FoodOrder>,
+    @InjectRepository(FoodSettings) private readonly settingsRepo: Repository<FoodSettings>,
   ) {}
 
   getOrderStream(): Observable<OrderNotification> {
     return this.orderSubject.asObservable();
+  }
+
+  // ── Settings ───────────────────────────────────────────────────────────────
+
+  /** Whether guests can currently place food/drink orders. Defaults off until an admin opens it. */
+  async isOrderingEnabled(): Promise<boolean> {
+    const row = await this.settingsRepo.findOne({ where: { id: SETTINGS_ID } });
+    return row?.orderingEnabled ?? false;
+  }
+
+  async setOrderingEnabled(enabled: boolean): Promise<boolean> {
+    const existing = await this.settingsRepo.findOne({ where: { id: SETTINGS_ID } });
+    if (existing) {
+      existing.orderingEnabled = enabled;
+      await this.settingsRepo.save(existing);
+    } else {
+      await this.settingsRepo.save(
+        this.settingsRepo.create({ id: SETTINGS_ID, orderingEnabled: enabled }),
+      );
+    }
+    return enabled;
   }
 
   // ── Items ──────────────────────────────────────────────────────────────────
@@ -81,6 +106,9 @@ export class FoodService {
     foodItemId: string,
     guestName: string,
   ): Promise<FoodOrder> {
+    if (!(await this.isOrderingEnabled())) {
+      throw new BadRequestException('Meal ordering is not open yet.');
+    }
     const item = await this.findItemById(foodItemId);
     if (!item.isAvailable) throw new BadRequestException('This item is no longer available.');
     if (item.availablePlates <= 0) throw new BadRequestException('No more plates available for this item.');

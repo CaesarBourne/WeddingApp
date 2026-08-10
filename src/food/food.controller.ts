@@ -20,7 +20,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Observable, map } from 'rxjs';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -47,6 +47,10 @@ export class PlaceOrderDto {
   @IsUUID() foodItemId: string;
 }
 
+export class SetOrderingEnabledDto {
+  @IsBoolean() enabled: boolean;
+}
+
 const FOOD_IMAGES_DIR = path.resolve(process.cwd(), 'data', 'food-images');
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const EXT_MAP: Record<string, string> = {
@@ -60,6 +64,24 @@ const EXT_MAP: Record<string, string> = {
 @Controller('food')
 export class FoodController {
   constructor(private readonly food: FoodService) {}
+
+  // ── Ordering on/off switch ───────────────────────────────────────────────────
+
+  @Public()
+  @Get('settings')
+  @ApiOperation({ summary: 'Whether guests can currently place orders (public).' })
+  async getSettings() {
+    return { orderingEnabled: await this.food.isOrderingEnabled() };
+  }
+
+  @Patch('settings')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Open or close guest ordering (admin+).' })
+  async setSettings(@Body() dto: SetOrderingEnabledDto) {
+    const orderingEnabled = await this.food.setOrderingEnabled(dto.enabled);
+    return { orderingEnabled };
+  }
 
   // ── Public item list + images ──────────────────────────────────────────────
 

@@ -41,9 +41,16 @@ export class User {
   @Column({ default: false })
   buttonEnabled: boolean;
 
-  /** Path on disk to the user's profile avatar image (relative to process.cwd()). */
+  /** Legacy: path on disk to the avatar image. Local disk isn't durable across
+   *  deploys — new avatars use avatarPhotoId instead. Kept for old rows. */
   @Column({ type: 'varchar', nullable: true })
   avatarPath: string | null;
+
+  /** Google Photos media item ID for the user's avatar. Uploaded to the couple's
+   *  album (durable storage) but never given a PhotoMeta row, so it never
+   *  appears in the public gallery. */
+  @Column({ type: 'varchar', nullable: true })
+  avatarPhotoId: string | null;
 
   /** Seat number at the event venue — set by admin, used for food ordering. */
   @Column({ type: 'varchar', nullable: true })
