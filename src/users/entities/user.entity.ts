@@ -37,9 +37,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   currentJti: string | null;
 
-  /** Admin-controlled flag that enables the second action button on the guest welcome page. */
+  /** Admin-controlled block. Everyone can view the gallery by default (false);
+   *  set true to hide "View Gallery"/"My Photos" for this specific guest. */
   @Column({ default: false })
-  buttonEnabled: boolean;
+  photosBlocked: boolean;
 
   /** Legacy: path on disk to the avatar image. Local disk isn't durable across
    *  deploys — new avatars use avatarPhotoId instead. Kept for old rows. */

@@ -35,9 +35,9 @@ export class CreateGuestDto {
   name: string;
 }
 
-export class SetButtonDto {
+export class SetPhotosBlockedDto {
   @IsBoolean()
-  enabled: boolean;
+  blocked: boolean;
 }
 
 export class SetSeatDto {
@@ -119,18 +119,18 @@ export class UsersController {
     return this.toDto(user);
   }
 
-  @Patch('guests/:id/button')
-  @ApiOperation({ summary: 'Enable or disable the second action button on a guest welcome page (admin+).' })
-  async setButton(@Param('id') id: string, @Body() dto: SetButtonDto) {
-    await this.users.setButtonEnabled(id, dto.enabled);
-    return { id, buttonEnabled: dto.enabled };
-  }
-
   @Patch('guests/:id/seat')
   @ApiOperation({ summary: 'Set (or clear) a guest seat number (admin+).' })
   async setSeat(@Param('id') id: string, @Body() dto: SetSeatDto) {
     await this.users.setSeatNumber(id, dto.seatNumber ?? null);
     return { id, seatNumber: dto.seatNumber ?? null };
+  }
+
+  @Patch('guests/:id/photos-block')
+  @ApiOperation({ summary: "Block or unblock a guest from viewing the gallery. Everyone can view by default (admin+)." })
+  async setPhotosBlocked(@Param('id') id: string, @Body() dto: SetPhotosBlockedDto) {
+    await this.users.setPhotosBlocked(id, dto.blocked);
+    return { id, photosBlocked: dto.blocked };
   }
 
   @Delete('guests/:id')
@@ -214,7 +214,7 @@ export class UsersController {
       role: u.role,
       isActive: u.isActive,
       guestToken: u.guestToken,
-      buttonEnabled: u.buttonEnabled,
+      photosBlocked: u.photosBlocked,
       seatNumber: u.seatNumber ?? null,
       guestNumber: u.guestNumber ?? null,
       admissionStatus: u.admissionStatus,

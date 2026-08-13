@@ -139,45 +139,6 @@
         ]
       }
     },
-    "/users/guests/{id}/button": {
-      "patch": {
-        "operationId": "UsersController_setButton",
-        "summary": "Enable or disable the second action button on a guest welcome page (admin+).",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetButtonDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "users"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
     "/users/guests/{id}/seat": {
       "patch": {
         "operationId": "UsersController_setSeat",
@@ -198,6 +159,45 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetSeatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/users/guests/{id}/photos-block": {
+      "patch": {
+        "operationId": "UsersController_setPhotosBlocked",
+        "summary": "Block or unblock a guest from viewing the gallery. Everyone can view by default (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPhotosBlockedDto"
               }
             }
           }
@@ -1130,11 +1130,11 @@
         "type": "object",
         "properties": {}
       },
-      "SetButtonDto": {
+      "SetSeatDto": {
         "type": "object",
         "properties": {}
       },
-      "SetSeatDto": {
+      "SetPhotosBlockedDto": {
         "type": "object",
         "properties": {}
       },

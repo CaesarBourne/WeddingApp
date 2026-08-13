@@ -43,7 +43,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email ?? '',
       role: user.role,
       name: user.name ?? undefined,
-      buttonEnabled: user.buttonEnabled,
+      photosBlocked: user.photosBlocked,
       seatNumber: user.seatNumber ?? null,
       jti: payload.jti,
     };

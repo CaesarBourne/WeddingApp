@@ -5,7 +5,7 @@ export interface AuthUser {
   email: string;
   role: string;
   name?: string;
-  buttonEnabled: boolean;
+  photosBlocked: boolean;
   seatNumber?: string | null;
   jti?: string;
 }
