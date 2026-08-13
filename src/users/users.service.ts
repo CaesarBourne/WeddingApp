@@ -111,12 +111,12 @@ export class UsersService implements OnModuleInit {
     return bcrypt.compare(password, user.passwordHash);
   }
 
-  async setButtonEnabled(id: string, enabled: boolean): Promise<void> {
-    await this.repo.update(id, { buttonEnabled: enabled });
-  }
-
   async setAvatar(id: string, avatarPath: string): Promise<void> {
     await this.repo.update(id, { avatarPath });
+  }
+
+  async setPhotosBlocked(id: string, blocked: boolean): Promise<void> {
+    await this.repo.update(id, { photosBlocked: blocked });
   }
 
   async setAvatarPhotoId(id: string, avatarPhotoId: string): Promise<void> {
