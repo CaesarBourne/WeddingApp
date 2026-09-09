@@ -11,9 +11,11 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { Role } from '../common/enums/role.enum';
+import { SeatGroup } from './entities/seat-group.entity';
 import { User } from './entities/user.entity';
 
 const SALT_ROUNDS = 12;
+const MAX_GUESTS_PER_SEAT_GROUP = 8;
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -21,6 +23,7 @@ export class UsersService implements OnModuleInit {
 
   constructor(
     @InjectRepository(User) private readonly repo: Repository<User>,
+    @InjectRepository(SeatGroup) private readonly seatGroupRepo: Repository<SeatGroup>,
     private readonly config: ConfigService,
   ) {}
 
@@ -89,13 +92,13 @@ export class UsersService implements OnModuleInit {
   }
 
   async findById(id: string): Promise<User> {
-    const user = await this.repo.findOne({ where: { id } });
+    const user = await this.repo.findOne({ where: { id }, relations: ['seatGroup'] });
     if (!user) throw new NotFoundException('User not found.');
     return user;
   }
 
   async findAll(): Promise<User[]> {
-    return this.repo.find({ order: { createdAt: 'ASC' } });
+    return this.repo.find({ order: { createdAt: 'ASC' }, relations: ['seatGroup'] });
   }
 
   findByGuestToken(token: string): Promise<User | null> {
@@ -125,6 +128,52 @@ export class UsersService implements OnModuleInit {
 
   async setSeatNumber(id: string, seatNumber: string | null): Promise<void> {
     await this.repo.update(id, { seatNumber });
+  }
+
+  async listSeatGroups(): Promise<SeatGroup[]> {
+    return this.seatGroupRepo.find({ relations: ['guests'], order: { createdAt: 'ASC' } });
+  }
+
+  async createSeatGroup(name: string): Promise<SeatGroup> {
+    const trimmed = name.trim();
+    const exists = await this.seatGroupRepo.findOne({ where: { name: trimmed } });
+    if (exists) {
+      throw new ConflictException('A seat group with that name already exists.');
+    }
+    const group = this.seatGroupRepo.create({ name: trimmed });
+    return this.seatGroupRepo.save(group);
+  }
+
+  async renameSeatGroup(id: string, name: string): Promise<SeatGroup> {
+    const group = await this.seatGroupRepo.findOne({ where: { id } });
+    if (!group) throw new NotFoundException('Seat group not found.');
+    group.name = name.trim();
+    return this.seatGroupRepo.save(group);
+  }
+
+  async deleteSeatGroup(id: string): Promise<void> {
+    const group = await this.seatGroupRepo.findOne({ where: { id } });
+    if (!group) throw new NotFoundException('Seat group not found.');
+    await this.seatGroupRepo.remove(group);
+  }
+
+  /** Assigns (or clears) a guest's seat group. Each group holds at most 8 guests. */
+  async setSeatGroup(userId: string, seatGroupId: string | null): Promise<void> {
+    const user = await this.findById(userId);
+
+    if (seatGroupId) {
+      const group = await this.seatGroupRepo.findOne({ where: { id: seatGroupId } });
+      if (!group) throw new NotFoundException('Seat group not found.');
+
+      if (user.seatGroupId !== seatGroupId) {
+        const count = await this.repo.count({ where: { seatGroupId } });
+        if (count >= MAX_GUESTS_PER_SEAT_GROUP) {
+          throw new ConflictException(`"${group.name}" already has ${MAX_GUESTS_PER_SEAT_GROUP} guests assigned.`);
+        }
+      }
+    }
+
+    await this.repo.update(userId, { seatGroupId });
   }
 
   async admitUser(id: string): Promise<User> {

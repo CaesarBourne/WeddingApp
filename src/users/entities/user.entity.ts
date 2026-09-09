@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Role } from '../../common/enums/role.enum';
+import { SeatGroup } from './seat-group.entity';
 
 @Entity('users')
 export class User {
@@ -56,6 +59,17 @@ export class User {
   /** Seat number at the event venue — set by admin, used for food ordering. */
   @Column({ type: 'varchar', nullable: true })
   seatNumber: string | null;
+
+  /** Named seat group (e.g. "Groomsmen") this guest belongs to — max 8 guests per group. */
+  @Column({ type: 'uuid', nullable: true })
+  seatGroupId: string | null;
+
+  @ManyToOne(() => SeatGroup, (seatGroup) => seatGroup.guests, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'seatGroupId' })
+  seatGroup: SeatGroup | null;
 
   /** Sequential guest number, assigned once at creation. Guest-role users only. */
   @Column({ type: 'int', nullable: true, unique: true })

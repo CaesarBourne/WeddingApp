@@ -12,6 +12,7 @@ import { validationSchema } from './config/validation';
 import { FoodModule } from './food/food.module';
 import { GooglePhotosModule } from './google-photos/google-photos.module';
 import { PhotosModule } from './photos/photos.module';
+import { SeatGroup } from './users/entities/seat-group.entity';
 import { User } from './users/entities/user.entity';
 import { UsersModule } from './users/users.module';
 
@@ -71,7 +72,7 @@ async function resolveHostReliably(host: string, attempts = 4): Promise<string> 
       useFactory: async (config: ConfigService) => {
         const type = config.get<'sqlite' | 'postgres'>('db.type');
         const common = {
-          entities: [User],
+          entities: [User, SeatGroup],
           autoLoadEntities: true,
         };
         if (type === 'postgres') {

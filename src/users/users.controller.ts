@@ -47,6 +47,26 @@ export class SetSeatDto {
   seatNumber: string | null;
 }
 
+export class CreateSeatGroupDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  name: string;
+}
+
+export class UpdateSeatGroupDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  name: string;
+}
+
+export class SetSeatGroupDto {
+  @IsString()
+  @IsOptional()
+  seatGroupId: string | null;
+}
+
 export class CreateAdminDto {
   @IsString()
   @IsNotEmpty()
@@ -112,6 +132,39 @@ export class UsersController {
     return users.map((u) => this.toDto(u));
   }
 
+  @Get('seat-groups')
+  @ApiOperation({ summary: 'List all seat groups with their guest counts (admin+).' })
+  async listSeatGroups() {
+    const groups = await this.users.listSeatGroups();
+    return groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      guestCount: g.guests?.length ?? 0,
+      createdAt: g.createdAt,
+    }));
+  }
+
+  @Post('seat-groups')
+  @ApiOperation({ summary: 'Create a named seat group, e.g. "Groomsmen" (admin+).' })
+  async createSeatGroup(@Body() dto: CreateSeatGroupDto) {
+    const group = await this.users.createSeatGroup(dto.name);
+    return { id: group.id, name: group.name, guestCount: 0, createdAt: group.createdAt };
+  }
+
+  @Patch('seat-groups/:id')
+  @ApiOperation({ summary: 'Rename a seat group (admin+).' })
+  async renameSeatGroup(@Param('id') id: string, @Body() dto: UpdateSeatGroupDto) {
+    const group = await this.users.renameSeatGroup(id, dto.name);
+    return { id: group.id, name: group.name };
+  }
+
+  @Delete('seat-groups/:id')
+  @ApiOperation({ summary: 'Delete a seat group (its guests keep their seat number, admin+).' })
+  async deleteSeatGroup(@Param('id') id: string) {
+    await this.users.deleteSeatGroup(id);
+    return { deleted: true };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single user by ID (admin+).' })
   async findOne(@Param('id') id: string) {
@@ -124,6 +177,13 @@ export class UsersController {
   async setSeat(@Param('id') id: string, @Body() dto: SetSeatDto) {
     await this.users.setSeatNumber(id, dto.seatNumber ?? null);
     return { id, seatNumber: dto.seatNumber ?? null };
+  }
+
+  @Patch('guests/:id/seat-group')
+  @ApiOperation({ summary: 'Assign (or clear) a guest\'s seat group — max 8 guests per group (admin+).' })
+  async setSeatGroup(@Param('id') id: string, @Body() dto: SetSeatGroupDto) {
+    await this.users.setSeatGroup(id, dto.seatGroupId ?? null);
+    return { id, seatGroupId: dto.seatGroupId ?? null };
   }
 
   @Patch('guests/:id/photos-block')
@@ -216,6 +276,7 @@ export class UsersController {
       guestToken: u.guestToken,
       photosBlocked: u.photosBlocked,
       seatNumber: u.seatNumber ?? null,
+      seatGroup: u.seatGroup ? { id: u.seatGroup.id, name: u.seatGroup.name } : null,
       guestNumber: u.guestNumber ?? null,
       admissionStatus: u.admissionStatus,
       admittedAt: u.admittedAt,

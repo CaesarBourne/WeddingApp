@@ -7,6 +7,7 @@ export interface AuthUser {
   name?: string;
   photosBlocked: boolean;
   seatNumber?: string | null;
+  seatGroupName?: string | null;
   jti?: string;
 }
 

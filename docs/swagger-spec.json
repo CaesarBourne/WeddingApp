@@ -110,6 +110,120 @@
         ]
       }
     },
+    "/users/seat-groups": {
+      "get": {
+        "operationId": "UsersController_listSeatGroups",
+        "summary": "List all seat groups with their guest counts (admin+).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "UsersController_createSeatGroup",
+        "summary": "Create a named seat group, e.g. \"Groomsmen\" (admin+).",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSeatGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/users/seat-groups/{id}": {
+      "patch": {
+        "operationId": "UsersController_renameSeatGroup",
+        "summary": "Rename a seat group (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSeatGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_deleteSeatGroup",
+        "summary": "Delete a seat group (its guests keep their seat number, admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/users/{id}": {
       "get": {
         "operationId": "UsersController_findOne",
@@ -159,6 +273,45 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetSeatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/users/guests/{id}/seat-group": {
+      "patch": {
+        "operationId": "UsersController_setSeatGroup",
+        "summary": "Assign (or clear) a guest's seat group — max 8 guests per group (admin+).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSeatGroupDto"
               }
             }
           }
@@ -1130,7 +1283,19 @@
         "type": "object",
         "properties": {}
       },
+      "CreateSeatGroupDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateSeatGroupDto": {
+        "type": "object",
+        "properties": {}
+      },
       "SetSeatDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "SetSeatGroupDto": {
         "type": "object",
         "properties": {}
       },
