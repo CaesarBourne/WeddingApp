@@ -127,6 +127,14 @@ export class UsersService implements OnModuleInit {
   }
 
   async setSeatNumber(id: string, seatNumber: string | null): Promise<void> {
+    if (seatNumber) {
+      const existing = await this.repo.findOne({ where: { seatNumber } });
+      if (existing && existing.id !== id) {
+        throw new ConflictException(
+          `Seat ${seatNumber} is already assigned to ${existing.name || 'another guest'}.`,
+        );
+      }
+    }
     await this.repo.update(id, { seatNumber });
   }
 

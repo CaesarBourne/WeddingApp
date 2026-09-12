@@ -56,8 +56,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   avatarPhotoId: string | null;
 
-  /** Seat number at the event venue — set by admin, used for food ordering. */
-  @Column({ type: 'varchar', nullable: true })
+  /** Seat number at the event venue — set by admin, used for food ordering.
+   *  Unique so the same seat can't be double-booked across guests. */
+  @Column({ type: 'varchar', nullable: true, unique: true })
   seatNumber: string | null;
 
   /** Named seat group (e.g. "Groomsmen") this guest belongs to — max 8 guests per group. */
