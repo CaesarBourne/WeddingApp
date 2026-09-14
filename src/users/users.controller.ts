@@ -40,6 +40,11 @@ export class SetPhotosBlockedDto {
   blocked: boolean;
 }
 
+export class SetUnavailableDto {
+  @IsBoolean()
+  unavailable: boolean;
+}
+
 export class SetSeatDto {
   @IsString()
   @IsOptional()
@@ -200,6 +205,13 @@ export class UsersController {
     return { deleted: true };
   }
 
+  @Patch('guests/:id/unavailable')
+  @ApiOperation({ summary: "Mark a guest as not attending, or move them back (admin+). Invite/QR stays intact." })
+  async setUnavailable(@Param('id') id: string, @Body() dto: SetUnavailableDto) {
+    await this.users.setUnavailable(id, dto.unavailable);
+    return { id, unavailable: dto.unavailable };
+  }
+
   /** Guest or admin uploads their own avatar. */
   @Post('me/avatar')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.GUEST)
@@ -278,6 +290,7 @@ export class UsersController {
       seatNumber: u.seatNumber ?? null,
       seatGroup: u.seatGroup ? { id: u.seatGroup.id, name: u.seatGroup.name } : null,
       guestNumber: u.guestNumber ?? null,
+      unavailable: u.unavailable ?? false,
       admissionStatus: u.admissionStatus,
       admittedAt: u.admittedAt,
       avatarUrl: u.avatarPhotoId || u.avatarPath ? `/users/${u.id}/avatar` : null,

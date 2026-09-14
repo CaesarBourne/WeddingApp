@@ -122,6 +122,11 @@ export class UsersService implements OnModuleInit {
     await this.repo.update(id, { photosBlocked: blocked });
   }
 
+  /** Marks a guest as not attending (or moves them back). Their invite/QR stays intact. */
+  async setUnavailable(id: string, unavailable: boolean): Promise<void> {
+    await this.repo.update(id, { unavailable });
+  }
+
   async setAvatarPhotoId(id: string, avatarPhotoId: string): Promise<void> {
     await this.repo.update(id, { avatarPhotoId });
   }
