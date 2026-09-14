@@ -80,6 +80,11 @@ export class User {
   @Column({ type: 'varchar', default: 'pending' })
   admissionStatus: 'pending' | 'admitted';
 
+  /** Guest confirmed they can't make it. Invite/QR stays intact — just moved
+   *  out of the main guest list in the admin UI. */
+  @Column({ default: false })
+  unavailable: boolean;
+
   /** Timestamp of when the guest was first admitted at the entrance. */
   @Column({ nullable: true, type: 'timestamp' })
   admittedAt: Date | null;
