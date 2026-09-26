@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 
-/** Named seating group (e.g. "Groomsmen") that up to 8 guests can be assigned to. */
+/** Named seating group (e.g. "Groomsmen") that up to 7 guests can be assigned to. */
 @Entity('seat_groups')
 export class SeatGroup {
   @PrimaryGeneratedColumn('uuid')

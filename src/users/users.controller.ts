@@ -185,7 +185,7 @@ export class UsersController {
   }
 
   @Patch('guests/:id/seat-group')
-  @ApiOperation({ summary: 'Assign (or clear) a guest\'s seat group — max 8 guests per group (admin+).' })
+  @ApiOperation({ summary: 'Assign (or clear) a guest\'s seat group — max 7 guests per group (admin+).' })
   async setSeatGroup(@Param('id') id: string, @Body() dto: SetSeatGroupDto) {
     await this.users.setSeatGroup(id, dto.seatGroupId ?? null);
     return { id, seatGroupId: dto.seatGroupId ?? null };
