@@ -15,7 +15,7 @@ import { SeatGroup } from './entities/seat-group.entity';
 import { User } from './entities/user.entity';
 
 const SALT_ROUNDS = 12;
-const MAX_GUESTS_PER_SEAT_GROUP = 8;
+const MAX_GUESTS_PER_SEAT_GROUP = 7;
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -170,7 +170,7 @@ export class UsersService implements OnModuleInit {
     await this.seatGroupRepo.remove(group);
   }
 
-  /** Assigns (or clears) a guest's seat group. Each group holds at most 8 guests. */
+  /** Assigns (or clears) a guest's seat group. Each group holds at most 7 guests. */
   async setSeatGroup(userId: string, seatGroupId: string | null): Promise<void> {
     const user = await this.findById(userId);
 

@@ -61,7 +61,7 @@ export class User {
   @Column({ type: 'varchar', nullable: true, unique: true })
   seatNumber: string | null;
 
-  /** Named seat group (e.g. "Groomsmen") this guest belongs to — max 8 guests per group. */
+  /** Named seat group (e.g. "Groomsmen") this guest belongs to — max 7 guests per group. */
   @Column({ type: 'uuid', nullable: true })
   seatGroupId: string | null;
 
